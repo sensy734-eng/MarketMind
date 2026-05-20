@@ -29,3 +29,8 @@ MarketMind 是一款基于 FastAPI 与 Vue 3 架构的前后端分离数字化�
   "fix_suggestion": "",
   "final_content": "..."
 }
+### 2. 后端自适应解包算法 (Recursive Unpacker)
+扣子同步运行接口返回的响应极易因为多层嵌套产生双重序列化、单双引号错配等诡异变态形态（如自动包裹 {'output': '...'} 壳）。后端微网关（main.py）手写了递归自适应解包机制，并融合 json.loads 与 ast.literal_eval 双重解析保底，剥离嵌套字典，100% 确保合规调试面板在前端无损高阶渲染。
+
+### 3. 多代架构演进心路 (Architecture Evolution)
+项目内嵌的文档中心完整留存并对比了 V1.0（同步多分支五节点拓扑）因应对延迟危机和质量危机，最终向 V2.0（线性 Guardrail 强合并打包）旗舰架构重构演进的完整技术路线。
