@@ -35,13 +35,14 @@ MarketMind 是一款基于 FastAPI 与 Vue 3 架构的前后端分离数字化�
 
 ### 3. 多代架构演进心路 (Architecture Evolution)
 项目内嵌的文档中心完整留存并对比了 V1.0（同步多分支五节点拓扑）因应对延迟危机和质量危机，最终向 V2.0（线性 Guardrail 强合并打包）旗舰架构重构演进的完整技术路线。
-🛠️ 项目依赖对齐与快速开始
 
-# 1. 克隆项目
+## 🛠️ 项目依赖对齐与快速开始
+
+### 1. 克隆项目
 git clone [https://github.com/sensy734-eng/MarketMind.git](https://github.com/sensy734-eng/MarketMind.git)
 cd MarketMind
 
-# 2. 安装标准依赖
+### 2. 安装标准依赖
 pip install -r requirements.txt
 
 # 3. 声明环境变量
