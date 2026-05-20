@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarketMind —— AI 竞品内容分析助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col justify-between">
+
+    <div id="app" class="w-full">
+        
+        <div v-if="currentView === 'app'" class="container mx-auto px-4 py-8 max-w-4xl">
+            <header class="flex flex-col sm:flex-row justify-between items-center mb-10 border-b border-slate-200 pb-5 gap-4">
+                <div class="text-center sm:text-left">
+                    <h1 class="text-3xl font-extrabold text-indigo-600 tracking-tight mb-1">MarketMind</h1>
+                    <p class="text-slate-500 text-sm">基于 Coze Workflow 的 AI 竞品内容分析与多平台内容分发助手</p>
+                </div>
+                <button 
+                    @click="currentView = 'docs'" 
+                    class="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 rounded-xl transition duration-150 border border-indigo-100 shadow-sm"
+                >
+                    📖 架构演进文档中心
+                </button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-1 h-fit">
+                    <h2 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">输入配置</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-500 mb-2">竞品名称/关键词</label>
+                        <input 
+                            v-model="form.competitor_keyword"
+                            type="text" 
+                            placeholder="例如：霸王茶姬 伯牙绝弦" 
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm placeholder:text-slate-300"
+                            :disabled="isLoading"
+                        />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-500 mb-2">目标分发平台</label>
+                        <select 
+                            v-model="form.target_platform"
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
+                            :disabled="isLoading"
+                        >
+                            <option value="小红书">小红书 (爆款种草文案)</option>
+                            <option value="抖音">抖音 (短视频口播脚本)</option>
+                            <option value="公众号">公众号 (深度推文大纲)</option>
+                        </select>
+                    </div>
+
+                    <button 
+                        @click="handleAnalyzeStandard"
+                        :disabled="isLoading || !form.competitor_keyword"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 shadow-sm disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                    >
+                        <span v-if="isLoading" class="animate-spin inline-block w-4 h-4 border-[2px] border-current border-t-transparent text-white rounded-full"></span>
+                        {{ isLoading ? 'AI 流水线全力分析中...' : '开始智能分析' }}
+                    </button>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 md:col-span-2 min-h-[400px] flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                            <h2 class="text-lg font-bold text-slate-700">分析与生成结果</h2>
+                            <span class="text-xs bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-medium" v-if="currentPlatform">
+                                {{ currentPlatform }} 模式
+                            </span>
+                        </div>
+
+                        <div v-if="!isLoading && !resultData && !rawErrorMsg" class="text-center py-24 text-slate-400">
+                            <p class="text-sm">在左侧配置竞品信息，点击“开始智能分析”</p>
+                            <p class="text-xs mt-1 text-slate-300">系统将启用 2.0 事务合规打包管道，提供工业级 Guardrail 审计拦截日志</p>
+                        </div>
+
+                        <div v-if="isLoading" class="p-6 bg-slate-950 text-slate-100 rounded-2xl font-mono text-xs shadow-xl space-y-4 border border-slate-800 animate-pulse">
+                            <div class="text-indigo-400 text-[11px] font-bold tracking-wider uppercase border-b border-slate-800 pb-2 flex justify-between items-center">
+                                <span>🛰️ AI CORE SECURITY INTERCEPTOR MATRIX (V2.0)</span>
+                                <span class="text-amber-400 font-sans text-[10px] bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">深度风控推理中 // 预计耗时 45s</span>
+                            </div>
+                            <div class="space-y-2.5 text-slate-300">
+                                <div class="flex items-center gap-2"><span class="text-indigo-400">▶ PHASE 1:</span> <span>正在通过 Bing 搜索核心组件跨多源实时清洗外部竞品真实舆情差评...</span></div>
+                                <div class="flex items-center gap-2"><span class="text-indigo-400">▶ PHASE 2:</span> <span>结构化提取竞品物理特征画像，同时对冲召回 FreshTea 本地知识库资产...</span></div>
+                                <div class="flex items-center gap-2"><span class="text-indigo-400">▶ PHASE 3:</span> <span>自媒体矩阵撰写引擎高网感文本重组编排中...</span></div>
+                                <div class="flex items-center gap-2"><span class="text-rose-400 font-bold">▶ GUARDRAIL:</span> <span class="text-slate-400 font-sans">独立“精确模式”合规审计大模型正在对产出粗稿执行逐句硬核比对核对，严防出现事实捏造与常识拉踩翻车风险...</span></div>
+                            </div>
+                            <div class="pt-2 border-t border-slate-900 flex justify-center">
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500">
+                                    <span class="inline-block w-2 h-2 bg-indigo-500 rounded-full animate-ping"></span>
+                                    <span>网关长连接维持中，切勿刷新页面...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="rawErrorMsg" class="text-rose-600 text-sm p-4 bg-rose-50 rounded-xl border border-rose-100 mb-4 font-mono">
+                            {{ rawErrorMsg }}
+                        </div>
+
+                        <div v-if="!isLoading && resultData" class="space-y-4">
+                            
+                            <div :class="['p-4 rounded-xl border text-xs', resultData.is_passed ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800']">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="font-bold flex items-center gap-1.5">
+                                        <span v-if="resultData.is_passed">🟢 线上合规审计通过 (Guardrail: Passed)</span>
+                                        <span v-else>🔴 线上合规审计拦截 (Guardrail: Intercepted)</span>
+                                    </span>
+                                    <span :class="['px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold', resultData.is_passed ? 'bg-emerald-200 text-emerald-950' : 'bg-rose-200 text-rose-950']">
+                                        Risk: {{ resultData.risk_level }}
+                                    </span>
+                                </div>
+                                <div class="font-semibold mb-1">🔍 审计日志 (Audit Log):</div>
+                                <div class="text-slate-600 mb-2 bg-white/70 p-2 rounded border border-slate-100 font-mono text-[11px] leading-normal whitespace-pre-wrap">
+                                    {{ resultData.audit_log }}
+                                </div>
+                                
+                                <div v-if="!resultData.is_passed && resultData.fix_suggestion">
+                                    <div class="font-bold text-amber-800 mb-1">💡 优化重写策略 (Remediation Suggestion):</div>
+                                    <div class="text-amber-900 bg-amber-100/50 p-2 rounded border border-amber-200 font-sans leading-normal">
+                                        {{ resultData.fix_suggestion }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap select-text bg-slate-50 p-5 rounded-xl border border-slate-100 overflow-y-auto max-h-[450px]">
+{{ resultData.final_content }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="!isLoading && resultData" class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                        <button 
+                            @click="copyToClipboard"
+                            class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium py-2 px-4 rounded-lg transition duration-150 flex items-center gap-1"
+                        >
+                            {{ copyStatus }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentView === 'docs'" class="bg-white min-h-screen flex flex-col">
+            <header class="h-14 border-b border-slate-200 flex items-center justify-between px-6 bg-slate-50 shrink-0">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-black text-indigo-600 tracking-wider">MarketMind</span>
+                    <span class="text-xs text-slate-400 bg-slate-200 px-2 py-0.5 rounded font-mono">V1.2.0 Architecture Docs</span>
+                </div>
+                <button 
+                    @click="currentView = 'app'" 
+                    class="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition shadow-sm flex items-center gap-1"
+                >
+                    ↩ 返回分析应用
+                </button>
+            </header>
+
+            <div class="flex flex-1 overflow-hidden">
+                <aside class="w-64 border-r border-slate-200 bg-slate-50 p-4 flex flex-col justify-between select-none shrink-0">
+                    <div class="space-y-6">
+                        <div>
+                            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2 border-b border-slate-200 pb-1">V1.0 基础架构 (旧版)</div>
+                            <ul class="space-y-1 mt-1">
+                                <li>
+                                    <button @click="activeTab = 'v1-background'" :class="['w-full text-left text-xs px-3 py-2 rounded-lg font-medium transition', activeTab === 'v1-background' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100']">
+                                        🚀 1.0 项目背景与拉踩诉求
+                                    </button>
+                                </li>
+                                <li>
+                                    <button @click="activeTab = 'v1-architecture'" :class="['w-full text-left text-xs px-3 py-2 rounded-lg font-medium transition', activeTab === 'v1-architecture' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100']">
+                                        ⚙️ 1.0 同步多分支五节点原理
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <div class="text-xs font-semibold text-indigo-500 uppercase tracking-wider px-3 mb-2 border-b border-indigo-100 pb-1">V2.0 旗舰架构 (当前运行)</div>
+                            <ul class="space-y-1 mt-1">
+                                <li>
+                                    <button @click="activeTab = 'v2-background'" :class="['w-full text-left text-xs px-3 py-2 rounded-lg font-medium transition', activeTab === 'v2-background' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100']">
+                                        ⚡ 2.0 幻觉危机与流水线整合
+                                    </button>
+                                </li>
+                                <li>
+                                    <button @click="activeTab = 'v2-architecture'" :class="['w-full text-left text-xs px-3 py-2 rounded-lg font-medium transition', activeTab === 'v2-architecture' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100']">
+                                        🛡️ 2.0 纯线性 Guardrail 护栏原理
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2 border-b border-slate-200 pb-1">分发配置手册</div>
+                            <ul class="space-y-1 mt-1">
+                                <li>
+                                    <button @click="activeTab = 'manual'" :class="['w-full text-left text-xs px-3 py-2 rounded-lg font-medium transition', activeTab === 'manual' ? 'bg-indigo-50 text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-100']">
+                                        🛠️ 核心功能与平台矩阵要求
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50 text-xxs text-slate-400 font-mono">
+                        Server Engine:<br>
+                        Coze Transaction API
+                    </div>
+                </aside>
+
+                <main class="flex-1 p-8 overflow-y-auto bg-white max-w-4xl mx-auto w-full">
+                    
+                    <div v-if="activeTab === 'v1-background'" class="space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <div class="text-xs font-bold text-slate-400 font-mono mb-1">ARCHIVED // V1.0 CONTEXT</div>
+                            <h2 class="text-2xl font-extrabold text-slate-800">🚀 V1.0 项目背景与拉踩诉求</h2>
+                        </div>
+                        <div class="prose text-sm text-slate-600 leading-relaxed space-y-4">
+                            <p class="text-justify font-medium text-slate-700 bg-amber-50/60 border-l-4 border-amber-400 p-4 rounded-r-xl">
+                                1.0 业务背景：当前新茶饮及消费品赛道已进入红海竞争时代。各大新媒体运营团队常面临“无法实时追踪和聚合竞品最新真实舆情缺陷”以及“难以快速将我方核心防御优势（0植脂末、赤藓糖醇控糖等白皮书数据）转化为宣发语料”的短板。
+                            </p>
+                            <h3 class="text-base font-bold text-slate-800 mt-6">📌 本项目固定企业背景案例：FreshTea 鲜茶主义</h3>
+                            <p class="text-justify text-slate-500">
+                                系统内置了品牌「FreshTea 鲜茶主义」的核心资产库。其核心防御策略为：全线拒绝使用植脂末与人工香精，全面采用天然赤藓糖醇，默认甜度仅为市面竞品的 1/3。
+                            </p>
+                            <p class="text-justify text-slate-500">
+                                1.0 核心逻辑是当用户输入任何外部竞品（如：霸王茶姬 伯牙绝弦），系统自动捕获该竞品的大众吐槽，然后自动检索并调用 FreshTea 的成分底牌进行精准的“跨维度反击式差异化营销”。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div v-if="activeTab === 'v1-architecture'" class="space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <div class="text-xs font-bold text-slate-400 font-mono mb-1">ARCHIVED // V1.0 FLOW</div>
+                            <h2 class="text-2xl font-extrabold text-slate-800">⚙️ V1.0 同步多分支五节点原理</h2>
+                        </div>
+                        <div class="prose text-sm text-slate-600 leading-relaxed space-y-4">
+                            <p class="text-justify text-slate-500">
+                                在 1.0 基础版中，系统通过多层大模型与网络实时检索插件进行全同步链式编排，整体拓扑包含五大核心节点：
+                            </p>
+                            <ol class="list-decimal list-inside space-y-2 pl-2 text-slate-500 font-mono text-xs bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <li>【Start 起始节点】 $\rightarrow$ 接收透传的 `competitor_keyword` 与 `target_platform` 变量。</li>
+                                <li>【网络检索与清洗层】 $\rightarrow$ 调用网页插件抓取全网关于竞品的真实大众槽点。</li>
+                                <li>【知识库精确召回层 (RAG)】 $\rightarrow$ 检索我方白皮书数据并注入上下文。</li>
+                                <li>【Condition-Router 条件分流器（IF 节点）】 $\rightarrow$ 根据变量分流至对应平台的大模型提示词节点。</li>
+                                <li>【End 结束节点】 $\rightarrow$ 各分流节点产出数据后，由于扣子平台只能有一个输出，后端采用多输出判空逻辑，最终由网关同步阻塞拦截回传前端。</li>
+                            </ol>
+                        </div>
+                    </div>
+
+
+                    <div v-if="activeTab === 'v2-background'" class="space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <div class="text-xs font-bold text-indigo-500 font-mono mb-1">CURRENT PRODUCTION // V2.0 EVOLUTION LOG</div>
+                            <h2 class="text-2xl font-extrabold text-slate-800">⚡ V2.0 质量幻觉危机到分布式管道打包</h2>
+                        </div>
+                        <div class="prose text-sm text-slate-600 leading-relaxed space-y-4">
+                            <p class="text-justify font-medium text-slate-700 bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-xl">
+                                <strong>第一阶段：输出质量瓶颈与 AI 幻觉危机（重构动因）</strong><br>
+                                本项目在初期测试时暴露出了严重的内容合规漏洞。由于最下游的撰写模型处于高发散的“创意模式”，为了追求营销文案的“拉踩爽感”，容易产生严重幻觉——无视事实真相，直接给主打纯牛乳的优秀竞品强加“全杯都是植脂末与化学香精”等虚假缺点。这种失实语料极易给品牌带来致命的法律风控和公关翻车风险，催生了引入硬核事实核对机制的刚需。
+                            </p>
+                            <p class="text-justify font-medium text-slate-700 bg-emerald-50 border-l-4 border-emerald-500 p-4 rounded-r-xl">
+                                <strong>第二阶段：多层风控审计带来的 57 秒性能危机与数据安全合并</strong><br>
+                                为了彻底拦截幻觉，我们在工作流终点引入了“精确模式审计大模型”。但多层模型的链式推理使执行 Tokens 消耗飙升至 5612，总响应耗时高攀至 57 秒。长达一分钟的 HTTP 阻塞如果采用不稳定的流式拆分极易由于多字节乱码在前端引发解析崩溃。为了在面试实机演示中实现“100% 数据事务完整性”，2.0 旗舰版采用了**云端事务流强合并打包+前端高保真可视化流水线监控面板**的组合拳设计。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div v-if="activeTab === 'v2-architecture'" class="space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <div class="text-xs font-bold text-indigo-500 font-mono mb-1">CURRENT PRODUCTION // V2.0 SYSTEM INTERNALS</div>
+                            <h2 class="text-2xl font-extrabold text-slate-800">🛡️ V2.0 纯线性 Guardrail 护栏原理</h2>
+                        </div>
+                        <div class="prose text-sm text-slate-600 leading-relaxed space-y-4">
+                            <p class="text-justify text-slate-500">
+                                2.0 旗舰版彻底抛弃了臃肿的多路分支拓扑，在云端重构为了极简、确定性极高的**纯线性合规提取流水线**：
+                            </p>
+                            
+                            <div class="bg-slate-900 text-slate-200 p-4 rounded-xl border border-slate-800 font-mono text-xs space-y-2.5 shadow-md">
+                                <div class="flex gap-2"><span class="text-indigo-400">[Start]</span> <span>FastAPI 网关接收用户的竞品关键词及目标分发媒介变量。</span></div>
+                                <div class="flex gap-2"><span class="text-indigo-400">[Node 1]</span> <span>舆情清洗 Agent 运作，利用 search_web 插件建立严谨的竞品 JSON 事实画像。</span></div>
+                                <div class="flex gap-2"><span class="text-indigo-400">[Node 2]</span> <span>RAG 精确召回层。高维向量提取我方 FreshTea 白皮书参数注入上下文。</span></div>
+                                <div class="flex gap-2"><span class="text-indigo-400">[Node 3]</span> <span>创意撰写 Agent 产出高网感粗稿文案。</span></div>
+                                <div class="flex gap-2"><span class="text-emerald-400">[Node 4]</span> <span>**精确合规审查终节点**（核心护栏中间件）。采用精确模式，逐句核对粗稿是否对 Node1 的事实画像进行恶意捏造。最终合并输出标准 JSON 字典。</span></div>
+                            </div>
+
+                            <p class="text-justify text-slate-500 mt-4">
+                                后端 FastAPI 网关在接收到完整的打包响应后，无损转发给前端。前端的高级感知组件在加载状态下会全速激活 **AI 深度风控流水线实时执行动态面板**，将 57 秒的深度推理过程转化为高可观测性的工业级架构展示，全面提升系统在生产演示中的可用性与技术壁垒。
+                            </p>
+                        </div>
+                    </div>
+
+
+                    <div v-if="activeTab === 'manual'" class="space-y-6">
+                        <div class="border-b border-slate-100 pb-4">
+                            <h2 class="text-2xl font-extrabold text-slate-800">🛠️ 核心功能与平台矩阵要求</h2>
+                            <p class="text-sm text-slate-400 mt-1">详解各新媒体分发渠道的 Prompt 微调控制与输出调性</p>
+                        </div>
+                        <div class="prose text-sm text-slate-600 leading-relaxed space-y-4">
+                            <div class="p-5 bg-pink-50/50 rounded-2xl border border-pink-100 space-y-2">
+                                <h4 class="text-sm font-bold text-pink-700 flex items-center gap-1">🟥 小红书模式 (爆款种种草风)</h4>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    采用口语化的“闺蜜蜜友式”语境，嵌套高频热梗词汇（如谁懂啊、家人们）。排版每行文本独立成段，穿插高密度 Emoji。前三行制造痛点暴击（喝奶茶失眠、配料表糊弄），中段引入我方成分救赎，底部包装标签，激发用户搜索和高互动。
+                                </p>
+                            </div>
+
+                            <div class="p-5 bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 space-y-2">
+                                <h4 class="text-sm font-bold text-cyan-400 flex items-center gap-1">⬛ 抖音模式 (短视频口播脚本)</h4>
+                                <p class="text-xs text-slate-300 leading-relaxed">
+                                    输出标准短视频短句子口播。包含明确的【镜头画面描述】（如：特写奶茶杯配料表、手机原生镜头抖动）、【台词口播】以及【音效/BGM建议】。开局 3 秒内安排黄金钩子强行留存，中段反转带货。
+                                </p>
+                            </div>
+
+                            <div class="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 space-y-2">
+                                <h4 class="text-sm font-bold text-emerald-700 flex items-center gap-1">🟩 公众号模式 (深度推文大纲)</h4>
+                                <p class="text-xs text-slate-500 leading-relaxed">
+                                    严谨、客观、具有长媒体科普自媒体号公信力的叙事风格。输出结构包含拟选爆款标题池、金句提炼、理性科学数据逻辑拆解层。通过详尽的数据对比与食品营养学常识建立权威心智。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="text-center py-4 text-xs text-slate-400 border-t border-slate-200 bg-white w-full select-none shrink-0">
+        &copy; 2026 MarketMind Application. 专为大厂 AI 应用岗/大模型 Agent 实习面试打造的深度防御级 RAG 案例.
+    </footer>
+
+    <script>
+        const { createApp, ref, reactive } = Vue;
+
+        createApp({
+            setup() {
+                const currentView = ref('app');
+                const activeTab = ref('v2-background');
+
+                const form = reactive({
+                    competitor_keyword: '', 
+                    target_platform: '小红书'
+                });
+
+                const isLoading = ref(false);
+                const resultData = ref(null); 
+                const rawErrorMsg = ref('');
+                const currentPlatform = ref('');
+                const copyStatus = ref('📋 一键复制结果');
+
+                // 确定性 100% 的标准同步调用映射
+                const handleAnalyzeStandard = async () => {
+                    isLoading.value = true;
+                    resultData.value = null;
+                    rawErrorMsg.value = '';
+                    currentPlatform.value = form.target_platform;
+
+                    try {
+                        const response = await fetch('http://127.0.0.1:8000/api/analyze', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                competitor_keyword: form.competitor_keyword,
+                                target_platform: form.target_platform
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`后端网关无响应或状态码错误: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            // 💡 承接后端完美剥离并下发的解包字典对象
+                            resultData.value = result.data;
+                        } else {
+                            rawErrorMsg.value = `❌ 扣子微服务报错：${result.message}`;
+                        }
+                    } catch (error) {
+                        rawErrorMsg.value = `❌ 网络连接异常：请确认您的 FastAPI 后端主程序已成功在本地 8000 端口拉起。`;
+                        console.error(error);
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+
+                const copyToClipboard = () => {
+                    if (!resultData.value || !resultData.value.final_content) return;
+                    navigator.clipboard.writeText(resultData.value.final_content).then(() => {
+                        copyStatus.value = '✅ 文案复制成功！';
+                        setTimeout(() => { copyStatus.value = '📋 一键复制结果'; }, 2000);
+                    });
+                };
+
+                return {
+                    currentView,
+                    activeTab,
+                    form,
+                    isLoading,
+                    resultData,
+                    rawErrorMsg,
+                    currentPlatform,
+                    copyStatus,
+                    handleAnalyzeStandard,
+                    copyToClipboard
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
