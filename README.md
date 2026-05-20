@@ -46,7 +46,7 @@ cd MarketMind
 pip install -r requirements.txt
 
 ### 3. 声明环境变量
-# 复制 .env.example 并重命名为 .env，填入你的个人 COZE_API_TOKEN 和 WORKFLOW_ID
+复制 .env.example 并重命名为 .env，填入你的个人 COZE_API_TOKEN 和 WORKFLOW_ID
 
 ### 4. 启动后端微网关
 uvicorn main:app --reload
