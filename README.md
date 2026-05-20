@@ -12,7 +12,7 @@ MarketMind 是一款基于 FastAPI 与 Vue 3 架构的前后端分离数字化�
 
 * 🔗 **云端工作流一键克隆入口**：[点击此处一键克隆本项目的 Coze 工作流](这里放你发布的扣子工作流分享链接)
 * 📊 **V2.0 旗舰版纯线性合规管道拓扑图**：
-![Uploading competitor_content_analyzer_1.png…]()
+`![Architecture](assets/competitor_content_analyzer_1.png)`
 
 
 ---
